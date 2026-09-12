@@ -1,0 +1,5 @@
+cryptography>=41.0
+
+# tkinter ships with the standard Python installer on Windows/macOS.
+# On Debian/Ubuntu Linux only, install separately:
+#   sudo apt install python3-tk

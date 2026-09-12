@@ -1,0 +1,11 @@
+ts,node_id,protocol,event,msg_id,extra
+1789232305.988079,B,aodv_lite,tx_control,7ed6e0e6ec74,RREQ relay
+1789232307.9980135,B,aodv_lite,tx_control,2a7c9a509dd6,RREQ relay
+1789232313.501678,B,aodv_lite,tx_control,0a2cd4d94bbb,RREQ relay
+1789232313.501678,B,aodv_lite,route_recovered,c1a7c6364671,dst=D hops=2
+1789232315.5197418,B,aodv_lite,tx_control,b277ca773980,RREP dst=D
+1789232315.5206172,B,aodv_lite,tx_data,2a987392c6c7,relay(unicast)
+1789232315.526753,B,aodv_lite,tx_data,0733f0a5afa5,relay(unicast)
+1789232316.5027444,B,aodv_lite,tx_data,e84b5c22c69b,relay(unicast)
+1789232318.0082426,B,aodv_lite,tx_data,1f6c4ef7f6d8,relay(unicast)
+1789232319.512273,B,aodv_lite,tx_data,ad144da79d74,relay(unicast)

@@ -1,0 +1,19 @@
+ts,node_id,protocol,event,msg_id,extra
+1789232305.9933164,D,aodv_lite,tx_control,59d94938fd8e,RREP dst=D
+1789232308.0068996,D,aodv_lite,tx_control,a651cb218310,RREP dst=D
+1789232308.007913,D,aodv_lite,rx_data,0e6fce786e49,
+1789232308.007913,D,aodv_lite,delivered,0e6fce786e49,latency_ms=6.9
+1789232308.9938934,D,aodv_lite,rx_data,64e82ee3249a,
+1789232308.9938934,D,aodv_lite,delivered,64e82ee3249a,latency_ms=2.7
+1789232310.4960158,D,aodv_lite,rx_data,1412261a1f6a,
+1789232310.5002577,D,aodv_lite,delivered,1412261a1f6a,latency_ms=2.8
+1789232315.5277426,D,aodv_lite,rx_data,2a987392c6c7,
+1789232315.5277426,D,aodv_lite,delivered,2a987392c6c7,latency_ms=7.1
+1789232315.5277426,D,aodv_lite,rx_data,0733f0a5afa5,
+1789232315.534552,D,aodv_lite,delivered,0733f0a5afa5,latency_ms=12.9
+1789232316.5066023,D,aodv_lite,rx_data,e84b5c22c69b,
+1789232316.5066023,D,aodv_lite,delivered,e84b5c22c69b,latency_ms=3.9
+1789232318.0137973,D,aodv_lite,rx_data,1f6c4ef7f6d8,
+1789232318.0137973,D,aodv_lite,delivered,1f6c4ef7f6d8,latency_ms=9.1
+1789232319.5133128,D,aodv_lite,rx_data,ad144da79d74,
+1789232319.5133128,D,aodv_lite,delivered,ad144da79d74,latency_ms=4.2
