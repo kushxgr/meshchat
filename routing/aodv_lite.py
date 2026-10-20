@@ -41,22 +41,33 @@ class AODVLite(RoutingProtocol):
         super().__init__(node)
         self.routes = {}          # dst -> {next_hop, hop_count, expiry}
         self.reverse = {}         # originator -> {next_hop, hop_count, expiry}
-        self.pending = {}         # dst -> list[(payload, msg_id)] queued awaiting a route
+        self.pending = {}         # dst -> list[(payload, msg_id, delivery_id)] awaiting a route
         self.rreq_seen_for = {}   # dst -> last rreq send time (avoid spamming)
 
     # ---------- public API ----------
 
-    def send_data(self, dst: str, encrypted_payload: str, msg_id: str):
+    def send_data(self, dst: str, encrypted_payload: str, msg_id: str,
+                  delivery_id: str = None):
+        delivery_id = delivery_id or msg_id
         route = self._valid_route(dst)
         if route:
-            self._forward_data(dst, encrypted_payload, msg_id, origin=self.node.node_id)
+            self._forward_data(dst, encrypted_payload, msg_id, delivery_id)
             return
-        already_queued = dst in self.pending and len(self.pending[dst]) > 0
-        self.pending.setdefault(dst, []).append((encrypted_payload, msg_id))
+        queued = self.pending.setdefault(dst, [])
+        queued[:] = [item for item in queued if item[2] != delivery_id]
+        already_queued = bool(queued)
+        queued.append((encrypted_payload, msg_id, delivery_id))
         if not already_queued:
             # only kick off discovery if one isn't already in flight for this dst;
             # tick() will retry on RREQ_TIMEOUT if this attempt is lost
             self._start_route_discovery(dst)
+
+    def cancel_pending_delivery(self, delivery_id: str):
+        for dst, queued in list(self.pending.items()):
+            queued[:] = [item for item in queued if item[2] != delivery_id]
+            if not queued:
+                del self.pending[dst]
+                self.rreq_seen_for.pop(dst, None)
 
     def tick(self):
         now = time.time()
@@ -177,8 +188,8 @@ class AODVLite(RoutingProtocol):
 
         if pkt["origin"] == self.node.node_id:
             # route discovery finished at the requester -> flush queued messages
-            for payload, msg_id in self.pending.pop(pkt["dst"], []):
-                self._forward_data(pkt["dst"], payload, msg_id, origin=self.node.node_id)
+            for payload, msg_id, delivery_id in self.pending.pop(pkt["dst"], []):
+                self._forward_data(pkt["dst"], payload, msg_id, delivery_id)
             return
 
         rev = self.reverse.get(pkt["origin"])
@@ -220,7 +231,7 @@ class AODVLite(RoutingProtocol):
         self.node.metrics.log("tx_data", pkt["msg_id"], "relay(unicast)")
         self._unicast_next(pkt, route["next_hop"])
 
-    def _forward_data(self, dst, encrypted_payload, msg_id, origin):
+    def _forward_data(self, dst, encrypted_payload, msg_id, delivery_id):
         route = self._valid_route(dst)
         pkt = make_packet(
             PacketType.DATA,
@@ -228,6 +239,7 @@ class AODVLite(RoutingProtocol):
             msg_id=msg_id,
             dst=dst,
             payload=encrypted_payload,
+            delivery_id=delivery_id,
         )
         self.seen.add(pkt["msg_id"])
         self.node.metrics.log("tx_data", pkt["msg_id"], f"dst={dst} unicast")

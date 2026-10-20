@@ -33,6 +33,12 @@ class ChatGUI:
         self.log = scrolledtext.ScrolledText(self.root, state="disabled", wrap="word")
         self.log.pack(fill="both", expand=True, padx=6, pady=4)
 
+        self._pending_deliveries = {}
+        self.delivery_var = tk.StringVar(value="")
+        tk.Label(self.root, textvariable=self.delivery_var, anchor="w", wraplength=460).pack(
+            fill="x", padx=6,
+        )
+
         bottom = tk.Frame(self.root)
         bottom.pack(fill="x", padx=6, pady=4)
         self.entry = tk.Entry(bottom)
@@ -41,6 +47,7 @@ class ChatGUI:
         tk.Button(bottom, text="Send", command=self._send).pack(side="left", padx=4)
 
         node.on_message(self._on_incoming)
+        node.on_delivery_status(self._on_delivery_status)
         self.root.after(100, self._drain_queue)
 
     def _send(self):
@@ -54,12 +61,41 @@ class ChatGUI:
 
     def _on_incoming(self, src, text, meta):
         # called from a background thread -- hand off to the Tk thread
-        self._ui_queue.put(f"{src}: {text}   ({meta['latency_ms']:.0f} ms)")
+        self._ui_queue.put(("message", f"{src}: {text}   ({meta['latency_ms']:.0f} ms)"))
+
+    def _on_delivery_status(self, msg_id, dst, text, status, ttl_seconds):
+        self._ui_queue.put(("delivery", msg_id, dst, text, status, ttl_seconds))
 
     def _drain_queue(self):
         while not self._ui_queue.empty():
-            self._append(self._ui_queue.get())
+            event = self._ui_queue.get()
+            if event[0] == "message":
+                self._append(event[1])
+            else:
+                _, msg_id, dst, text, status, ttl_seconds = event
+                if status == "delivered":
+                    self._pending_deliveries.pop(msg_id, None)
+                    self._append(f"[delivered to {dst}]")
+                elif status == "expired":
+                    self._pending_deliveries.pop(msg_id, None)
+                    self._append(f"[no receipt from {dst} before message TTL expired]")
+                else:
+                    self._pending_deliveries[msg_id] = (
+                        dst, text, time.monotonic() + ttl_seconds,
+                    )
+        self._refresh_delivery_status()
         self.root.after(100, self._drain_queue)
+
+    def _refresh_delivery_status(self):
+        latest = next(reversed(self._pending_deliveries.values()), None)
+        if latest is None:
+            self.delivery_var.set("")
+        else:
+            dst, text, expires_at = latest
+            remaining = max(0, int(expires_at - time.monotonic() + 0.999))
+            self.delivery_var.set(
+                f"Awaiting receipt from {dst} ({remaining}s): {text}"
+            )
 
     def _append(self, line):
         self.log.configure(state="normal")

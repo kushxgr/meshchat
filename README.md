@@ -69,6 +69,12 @@ Both protocols share the same duplicate-suppression (`msg_id` cache) and
 the same neighbor-range check, so the comparison isolates the *routing*
 strategy rather than incidental implementation differences.
 
+Every delivered chat message is confirmed with an end-to-end ACK from the
+recipient. Each chat message is sent once. The sender keeps it visible as
+awaiting receipt for up to 30 seconds, then reports if no ACK arrived; an ACK
+clears the pending status earlier. Messages waiting for an AODV-lite route are
+removed from that route queue when their delivery TTL expires.
+
 ## Simulating multi-hop on one machine (no hardware needed)
 
 A real Wi-Fi hotspot is a single broadcast domain — every connected device
@@ -112,10 +118,11 @@ python app.py
 This opens a launcher window with two connection modes:
 
 - **Local demo** starts multiple simulated nodes on one PC.
-- **Wi-Fi / hotspot** starts one node on this PC. Run the executable on
-  each device connected to the same Wi-Fi LAN or hotspot. Choose a unique
-  node ID for each device, use the same UDP port and broadcast address on
-  all devices, then enter a peer's node ID in the chat window to message it.
+- **Wi-Fi / hotspot** starts one node on this PC (the default). Run the
+  executable on each Windows device connected to the same Wi-Fi LAN or
+  hotspot. Keep the suggested device name as its node ID, or choose a
+  different unique ID. Use the same UDP port and broadcast address on all
+  devices. The chat window lists discovered peers; select one to message it.
 
 For Windows Mobile Hotspot the subnet broadcast is commonly
 `192.168.137.255`; other Wi-Fi networks use their own subnet broadcast.

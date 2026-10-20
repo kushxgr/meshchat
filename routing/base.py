@@ -22,11 +22,15 @@ class RoutingProtocol:
         return False
 
     # --- interface every protocol must implement ---
-    def send_data(self, dst: str, encrypted_payload: str, msg_id: str):
+    def send_data(self, dst: str, encrypted_payload: str, msg_id: str,
+                  delivery_id: str = None):
         raise NotImplementedError
 
     def handle_packet(self, pkt: dict, addr):
         raise NotImplementedError
+
+    def cancel_pending_delivery(self, delivery_id: str):
+        """Cancel a message that expired before a queued route became available."""
 
     def tick(self):
         """Called periodically (e.g. every 1s) for timers/beacons/route expiry."""

@@ -19,13 +19,15 @@ from routing.base import RoutingProtocol
 class Flooding(RoutingProtocol):
     name = "flooding"
 
-    def send_data(self, dst: str, encrypted_payload: str, msg_id: str):
+    def send_data(self, dst: str, encrypted_payload: str, msg_id: str,
+                  delivery_id: str = None):
         pkt = make_packet(
             PacketType.DATA,
             self.node.node_id,
             msg_id=msg_id,
             dst=dst,
             payload=encrypted_payload,
+            delivery_id=delivery_id or msg_id,
         )
         self.seen.add(pkt["msg_id"])
         self.node.metrics.log("tx_data", pkt["msg_id"], f"dst={dst}")

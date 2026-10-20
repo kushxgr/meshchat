@@ -11,6 +11,8 @@ and opens a chat window for each node automatically.
 
 import ipaddress
 import os
+import re
+import socket
 import sys
 
 if "--worker" in sys.argv:
@@ -129,14 +131,15 @@ class MeshChatStudio:
         form = ttk.Frame(parent, style="Card.TFrame")
         form.pack(fill="x")
 
-        self.ids_var = tk.StringVar(value="A,B,C")
+        device_id = re.sub(r"[^A-Za-z0-9_-]", "-", socket.gethostname()).strip("-") or "MeshNode"
+        self.ids_var = tk.StringVar(value=device_id)
         self.protocol_var = tk.StringVar(value="flooding")
         self.topology_var = tk.StringVar(value=os.path.join(self._base_dir, "topology_chain3.json"))
         self.base_port_var = tk.StringVar(value="20000")
-        self.mode_var = tk.StringVar(value="Local demo")
+        self.mode_var = tk.StringVar(value="Wi-Fi / hotspot")
         self.broadcast_var = tk.StringVar(value="192.168.137.255")
 
-        self._field(form, "Node IDs", self.ids_var, row=0)
+        self._field(form, "Device node ID", self.ids_var, row=0)
         self._field(form, "Port", self.base_port_var, row=1)
 
         ttk.Label(form, text="Connection mode", style="CardBody.TLabel").grid(row=2, column=0, sticky="w", pady=(8, 2))
@@ -172,7 +175,7 @@ class MeshChatStudio:
 
         hint = ttk.Label(
             parent,
-            text="Use the same port and broadcast address on each device. Windows Mobile Hotspot commonly uses 192.168.137.255; other Wi-Fi networks need their subnet broadcast. Allow UDP in Windows Firewall.",
+            text="Run this EXE on each Windows device. Keep each device ID unique; select a discovered peer in its chat window. Use the same port and broadcast on all devices; allow UDP through Windows Firewall.",
             style="CardBody.TLabel",
             wraplength=320,
             justify="left",
@@ -236,10 +239,14 @@ class MeshChatStudio:
             self.topology_var.set(path)
 
     def _preset_chain(self):
+        self.mode_var.set("Local demo")
+        self._update_mode_controls()
         self.ids_var.set("A,B,C")
         self.topology_var.set(os.path.join(self._base_dir, "topology_chain3.json"))
 
     def _preset_ring(self):
+        self.mode_var.set("Local demo")
+        self._update_mode_controls()
         self.ids_var.set("A,B,C,D,E")
         self.topology_var.set(os.path.join(self._base_dir, "topology_demo.json"))
 

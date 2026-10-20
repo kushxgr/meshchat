@@ -29,7 +29,7 @@ class PacketType:
     HELLO = "HELLO"          # neighbor liveness beacon
     KEYADV = "KEYADV"        # public-key advertisement (flooded)
     DATA = "DATA"            # encrypted chat payload
-    ACK = "ACK"              # per-hop delivery ack (failure/latency measurement)
+    ACK = "ACK"              # end-to-end delivery acknowledgement
     RREQ = "RREQ"            # AODV-lite route request
     RREP = "RREP"            # AODV-lite route reply
     RERR = "RERR"            # AODV-lite route error

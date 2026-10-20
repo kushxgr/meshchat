@@ -30,7 +30,6 @@ by hand):
 import argparse
 import json
 import sys
-import threading
 
 from node import Node
 from topology import load_topology
@@ -66,7 +65,19 @@ def main():
     def on_message(src, text, meta):
         emit({"event": "message", "src": src, "text": text, "latency_ms": meta["latency_ms"]})
 
+    def on_delivery_status(msg_id, dst, text, status, ttl_seconds):
+        emit({
+            "event": "delivery_status",
+            "msg_id": msg_id,
+            "dst": dst,
+            "text": text,
+            "status": status,
+            "ttl_seconds": ttl_seconds,
+        })
+
+    node.on_peer(lambda peer_id: emit({"event": "peer", "node": peer_id}))
     node.on_message(on_message)
+    node.on_delivery_status(on_delivery_status)
     try:
         node.start()
     except OSError as exc:

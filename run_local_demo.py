@@ -28,6 +28,7 @@ import time
 import tkinter as tk
 from tkinter import scrolledtext
 import queue
+from tkinter import ttk
 
 
 class WorkerHandle:
@@ -116,12 +117,20 @@ class WorkerChatGUI:
         top.pack(fill="x", padx=6, pady=4)
         tk.Label(top, text="To:").pack(side="left")
         self.dst_var = tk.StringVar(value=default_dst or "")
-        tk.Entry(top, textvariable=self.dst_var, width=12).pack(side="left", padx=4)
+        self.peer_ids = []
+        self.dst_box = ttk.Combobox(top, textvariable=self.dst_var, values=(), width=16)
+        self.dst_box.pack(side="left", padx=4)
         self.pubkey_label = tk.Label(top, text="my pubkey: (starting...)")
         self.pubkey_label.pack(side="left")
 
         self.log = scrolledtext.ScrolledText(self.root, state="disabled", wrap="word")
         self.log.pack(fill="both", expand=True, padx=6, pady=4)
+
+        self._pending_deliveries = {}
+        self.delivery_var = tk.StringVar(value="")
+        tk.Label(self.root, textvariable=self.delivery_var, anchor="w", wraplength=460).pack(
+            fill="x", padx=6,
+        )
 
         bottom = tk.Frame(self.root)
         bottom.pack(fill="x", padx=6, pady=4)
@@ -149,10 +158,45 @@ class WorkerChatGUI:
                 self.pubkey_label.config(text=f"my pubkey: {obj['pubkey'][:16]}...")
             elif ev == "message":
                 self._append(f"{obj['src']}: {obj['text']}   ({obj['latency_ms']:.0f} ms)")
+            elif ev == "delivery_status":
+                msg_id = obj["msg_id"]
+                if obj["status"] == "delivered":
+                    self._pending_deliveries.pop(msg_id, None)
+                    self._append(f"[delivered to {obj['dst']}]")
+                elif obj["status"] == "expired":
+                    self._pending_deliveries.pop(msg_id, None)
+                    self._append(
+                        f"[no receipt from {obj['dst']} before message TTL expired]"
+                    )
+                else:
+                    self._pending_deliveries[msg_id] = (
+                        obj["dst"],
+                        obj["text"],
+                        time.monotonic() + obj["ttl_seconds"],
+                    )
             elif ev == "send_failed":
                 self._append(f"[can't send -- no key for {obj['dst']} yet, waiting on KEYADV]")
             elif ev == "error":
                 self._append(f"[network error: {obj['message']}]")
+            elif ev == "peer":
+                peer_id = obj["node"]
+                if peer_id not in self.peer_ids:
+                    self.peer_ids.append(peer_id)
+                    self.peer_ids.sort()
+                    self.dst_box.configure(values=self.peer_ids)
+                    self._append(f"[peer discovered: {peer_id}]")
+        self._refresh_delivery_status()
+
+    def _refresh_delivery_status(self):
+        latest = next(reversed(self._pending_deliveries.values()), None)
+        if latest is None:
+            self.delivery_var.set("")
+        else:
+            dst, text, expires_at = latest
+            remaining = max(0, int(expires_at - time.monotonic() + 0.999))
+            self.delivery_var.set(
+                f"Awaiting receipt from {dst} ({remaining}s): {text}"
+            )
 
     def _append(self, line):
         self.log.configure(state="normal")
