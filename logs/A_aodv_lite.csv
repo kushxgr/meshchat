@@ -1,17 +1,5 @@
 ts,node_id,protocol,event,msg_id,extra
-1789232305.988079,A,aodv_lite,tx_control,7ed6e0e6ec74,RREQ dst=D
-1789232307.992943,A,aodv_lite,tx_control,2a7c9a509dd6,RREQ dst=D
-1789232308.0010076,A,aodv_lite,route_recovered,c776bdf7e1cd,dst=D hops=2
-1789232308.0010076,A,aodv_lite,tx_data,0e6fce786e49,dst=D unicast
-1789232308.9911833,A,aodv_lite,tx_data,64e82ee3249a,dst=D unicast
-1789232310.493255,A,aodv_lite,tx_data,1412261a1f6a,dst=D unicast
-1789232311.9969256,A,aodv_lite,tx_data,9bdb9621db06,dst=D unicast
-1789232313.0071993,A,aodv_lite,route_broken,,neighbor_timeout dst=D next_hop=E
-1789232313.5000532,A,aodv_lite,tx_control,0a2cd4d94bbb,RREQ dst=D
-1789232315.5137897,A,aodv_lite,tx_control,1471ce15520a,RREQ dst=D
-1789232315.5206172,A,aodv_lite,route_recovered,b277ca773980,dst=D hops=3
-1789232315.5206172,A,aodv_lite,tx_data,2a987392c6c7,dst=D unicast
-1789232315.5206172,A,aodv_lite,tx_data,0733f0a5afa5,dst=D unicast
-1789232316.5027444,A,aodv_lite,tx_data,e84b5c22c69b,dst=D unicast
-1789232318.0066366,A,aodv_lite,tx_data,1f6c4ef7f6d8,dst=D unicast
-1789232319.509108,A,aodv_lite,tx_data,ad144da79d74,dst=D unicast
+1791567795.1936824,A,aodv_lite,tx_control,ec30db2e180c,RREQ dst=B
+1791567795.196401,A,aodv_lite,route_recovered,f6a0f16bcaea,dst=B hops=1
+1791567795.1972342,A,aodv_lite,tx_data,13a7386edd71,dst=B unicast
+1791567815.235528,A,aodv_lite,route_broken,,expired dst=B

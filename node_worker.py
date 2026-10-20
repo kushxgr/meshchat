@@ -48,19 +48,31 @@ def main():
     ap.add_argument("--peers", required=True)
     ap.add_argument("--protocol", default="flooding")
     ap.add_argument("--topology", default=None)
+    ap.add_argument("--mode", choices=["sim", "hotspot"], default="sim")
+    ap.add_argument("--broadcast", default="255.255.255.255")
     args = ap.parse_args()
 
     sim_peer_ports = [int(p) for p in args.peers.split(",") if p.strip()]
     topo = load_topology(args.topology) if args.topology else None
 
-    node = Node(node_id=args.id, port=args.port, mode="sim",
-                sim_peer_ports=sim_peer_ports, protocol=args.protocol, topology=topo)
+    try:
+        node = Node(node_id=args.id, port=args.port, mode=args.mode,
+                    sim_peer_ports=sim_peer_ports, broadcast_addr=args.broadcast,
+                    protocol=args.protocol, topology=topo)
+    except OSError as exc:
+        emit({"event": "error", "message": str(exc)})
+        return
 
     def on_message(src, text, meta):
         emit({"event": "message", "src": src, "text": text, "latency_ms": meta["latency_ms"]})
 
     node.on_message(on_message)
-    node.start()
+    try:
+        node.start()
+    except OSError as exc:
+        emit({"event": "error", "message": str(exc)})
+        node.stop()
+        return
     emit({"event": "started", "pubkey": node.pub_key_b64})
 
     # Block reading commands from stdin forever -- this is exactly the

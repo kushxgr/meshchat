@@ -33,7 +33,8 @@ import queue
 class WorkerHandle:
     """One node_worker.py subprocess + the pipe I/O around it."""
 
-    def __init__(self, node_id, port, all_ports, protocol, topology_path):
+    def __init__(self, node_id, port, all_ports, protocol, topology_path,
+                 mode="sim", broadcast_addr="255.255.255.255"):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         if getattr(sys, "frozen", False):
             cmd = [
@@ -42,6 +43,8 @@ class WorkerHandle:
                 "--id", node_id, "--port", str(port),
                 "--peers", ",".join(str(p) for p in all_ports),
                 "--protocol", protocol,
+                "--mode", mode,
+                "--broadcast", broadcast_addr,
             ]
         else:
             cmd = [
@@ -49,6 +52,8 @@ class WorkerHandle:
                 "--id", node_id, "--port", str(port),
                 "--peers", ",".join(str(p) for p in all_ports),
                 "--protocol", protocol,
+                "--mode", mode,
+                "--broadcast", broadcast_addr,
             ]
         if topology_path:
             cmd += ["--topology", topology_path]
@@ -59,6 +64,7 @@ class WorkerHandle:
             text=True, bufsize=1,
         )
         self.pubkey = None
+        self.error = None
         self.events = queue.Queue()
         threading.Thread(target=self._read_loop, daemon=True).start()
 
@@ -73,6 +79,8 @@ class WorkerHandle:
                 continue
             if obj.get("event") == "started":
                 self.pubkey = obj["pubkey"]
+            elif obj.get("event") == "error":
+                self.error = obj.get("message", "Worker failed to start.")
             self.events.put(obj)
 
     def send(self, dst, text):
@@ -143,6 +151,8 @@ class WorkerChatGUI:
                 self._append(f"{obj['src']}: {obj['text']}   ({obj['latency_ms']:.0f} ms)")
             elif ev == "send_failed":
                 self._append(f"[can't send -- no key for {obj['dst']} yet, waiting on KEYADV]")
+            elif ev == "error":
+                self._append(f"[network error: {obj['message']}]")
 
     def _append(self, line):
         self.log.configure(state="normal")

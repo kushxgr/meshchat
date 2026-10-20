@@ -58,6 +58,8 @@ class Node:
     def start(self):
         self._running = True
         self.transport.start()
+        self._send_hello()
+        self._send_keyadv()
         threading.Thread(target=self._periodic_loop, daemon=True).start()
 
     def stop(self):

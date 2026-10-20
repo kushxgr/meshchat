@@ -109,20 +109,33 @@ C must relay through B. Swap `--protocol aodv_lite` to compare.
 python app.py
 ```
 
-This opens a launcher window where you can choose the node IDs, protocol,
-base port, and topology file, then start a local mesh demo with one chat
-window per node. The launcher uses separate worker processes so the GUI
-stays responsive while routing and encryption run in the background.
+This opens a launcher window with two connection modes:
 
-To build a Windows executable, run `build_app.ps1` after installing
-PyInstaller. The packaged app uses the same worker model and includes the
-sample topology JSON files as bundled resources.
-It also embeds the custom app icon from `assets/mesh_chat.ico`.
+- **Local demo** starts multiple simulated nodes on one PC.
+- **Wi-Fi / hotspot** starts one node on this PC. Run the executable on
+  each device connected to the same Wi-Fi LAN or hotspot. Choose a unique
+  node ID for each device, use the same UDP port and broadcast address on
+  all devices, then enter a peer's node ID in the chat window to message it.
+
+For Windows Mobile Hotspot the subnet broadcast is commonly
+`192.168.137.255`; other Wi-Fi networks use their own subnet broadcast.
+If peer discovery does not work, check the router's client/AP isolation
+setting and allow Mesh Chat to receive UDP traffic on the selected port in
+Windows Firewall (Private networks). Guest Wi-Fi networks often isolate
+devices. A Wi-Fi access point is usually one broadcast domain; it does not
+automatically provide multi-hop relaying between clients.
+
+To build a standalone Windows executable, run `build_app.ps1` on Windows.
+It bundles Python, the GUI, cryptography, and topology resources; Python
+does not need to be installed on the target PC. The output is
+`dist/MeshChatStudio.exe`. The build is for the architecture of the Python
+used to build it (normally Windows x64); PyInstaller does not make one
+binary compatible with every Windows architecture or version.
 
 Example:
 
 ```
-powershell -ExecutionPolicy Bypass -File build_app.ps1
+powershell -ExecutionPolicy Bypass -File .\build_app.ps1
 ```
 
 ## Inspecting traffic in Wireshark

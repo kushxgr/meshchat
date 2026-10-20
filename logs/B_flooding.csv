@@ -1,3 +1,1 @@
 ts,node_id,protocol,event,msg_id,extra
-1789233078.0824442,B,flooding,rx_data,dbb8d0afc3aa,
-1789233078.0824442,B,flooding,delivered,dbb8d0afc3aa,latency_ms=0.0

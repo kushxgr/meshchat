@@ -9,6 +9,7 @@ typing command-line arguments. It launches one worker process per node
 and opens a chat window for each node automatically.
 """
 
+import ipaddress
 import os
 import sys
 
@@ -27,13 +28,14 @@ from run_local_demo import WorkerHandle, WorkerChatGUI
 
 class MeshChatStudio:
     def __init__(self):
+        self._base_dir = self._resource_dir()
+
         self.root = tk.Tk()
         self.root.title("Mesh Chat Studio")
         self.root.geometry("1180x760")
         self.root.minsize(1020, 680)
         self._set_window_icon(self.root)
 
-        self._base_dir = self._resource_dir()
         self._workers = {}
         self._windows = {}
         self._rows = {}
@@ -98,7 +100,7 @@ class MeshChatStudio:
         title.pack(anchor="w")
         subtitle = ttk.Label(
             header,
-            text="Launch a local encrypted mesh demo, open per-node chat windows, and compare Flooding vs AODV-lite from one place.",
+            text="Simulate a mesh locally or connect devices on the same Wi-Fi network or hotspot.",
             style="Muted.TLabel",
         )
         subtitle.pack(anchor="w", pady=(4, 0))
@@ -118,7 +120,7 @@ class MeshChatStudio:
         ttk.Label(parent, text="Demo Launcher", style="CardTitle.TLabel").pack(anchor="w")
         ttk.Label(
             parent,
-            text="Start a local multi-node mesh on one machine. Each node is launched as its own worker process so the GUI stays responsive.",
+            text="Run a multi-node simulation on this PC, or launch one network node for this device.",
             style="CardBody.TLabel",
             wraplength=320,
             justify="left",
@@ -131,20 +133,32 @@ class MeshChatStudio:
         self.protocol_var = tk.StringVar(value="flooding")
         self.topology_var = tk.StringVar(value=os.path.join(self._base_dir, "topology_chain3.json"))
         self.base_port_var = tk.StringVar(value="20000")
+        self.mode_var = tk.StringVar(value="Local demo")
+        self.broadcast_var = tk.StringVar(value="192.168.137.255")
 
         self._field(form, "Node IDs", self.ids_var, row=0)
-        self._field(form, "Base port", self.base_port_var, row=1)
+        self._field(form, "Port", self.base_port_var, row=1)
 
-        ttk.Label(form, text="Routing protocol", style="CardBody.TLabel").grid(row=2, column=0, sticky="w", pady=(8, 2))
+        ttk.Label(form, text="Connection mode", style="CardBody.TLabel").grid(row=2, column=0, sticky="w", pady=(8, 2))
+        mode_box = ttk.Combobox(form, textvariable=self.mode_var, values=("Local demo", "Wi-Fi / hotspot"), state="readonly", width=24)
+        mode_box.grid(row=2, column=1, sticky="ew", pady=(8, 2))
+        mode_box.bind("<<ComboboxSelected>>", self._update_mode_controls)
+
+        ttk.Label(form, text="Wi-Fi broadcast", style="CardBody.TLabel").grid(row=3, column=0, sticky="w", pady=(8, 2))
+        self.broadcast_entry = ttk.Entry(form, textvariable=self.broadcast_var)
+        self.broadcast_entry.grid(row=3, column=1, sticky="ew", pady=(8, 2))
+
+        ttk.Label(form, text="Routing protocol", style="CardBody.TLabel").grid(row=4, column=0, sticky="w", pady=(8, 2))
         protocol_box = ttk.Combobox(form, textvariable=self.protocol_var, values=("flooding", "aodv_lite"), state="readonly", width=24)
-        protocol_box.grid(row=2, column=1, sticky="ew", pady=(8, 2))
+        protocol_box.grid(row=4, column=1, sticky="ew", pady=(8, 2))
 
-        ttk.Label(form, text="Topology file", style="CardBody.TLabel").grid(row=3, column=0, sticky="w", pady=(8, 2))
+        ttk.Label(form, text="Topology file", style="CardBody.TLabel").grid(row=5, column=0, sticky="w", pady=(8, 2))
         topo_row = ttk.Frame(form, style="Card.TFrame")
-        topo_row.grid(row=3, column=1, sticky="ew", pady=(8, 2))
+        topo_row.grid(row=5, column=1, sticky="ew", pady=(8, 2))
         topo_entry = ttk.Entry(topo_row, textvariable=self.topology_var)
         topo_entry.pack(side="left", fill="x", expand=True)
-        ttk.Button(topo_row, text="Browse", command=self._browse_topology).pack(side="left", padx=(8, 0))
+        self.topology_browse = ttk.Button(topo_row, text="Browse", command=self._browse_topology)
+        self.topology_browse.pack(side="left", padx=(8, 0))
 
         form.columnconfigure(1, weight=1)
 
@@ -158,7 +172,7 @@ class MeshChatStudio:
 
         hint = ttk.Label(
             parent,
-            text="Tip: the default launcher uses 20000+ ports, which avoids Windows USB/WSLg conflicts on 6000-6002.",
+            text="Use the same port and broadcast address on each device. Windows Mobile Hotspot commonly uses 192.168.137.255; other Wi-Fi networks need their subnet broadcast. Allow UDP in Windows Firewall.",
             style="CardBody.TLabel",
             wraplength=320,
             justify="left",
@@ -167,16 +181,22 @@ class MeshChatStudio:
 
         self.status_var = tk.StringVar(value="Ready.")
         ttk.Label(parent, textvariable=self.status_var, style="CardBody.TLabel", wraplength=320, justify="left").pack(anchor="w")
+        self._update_mode_controls()
 
     def _field(self, parent, label, variable, row):
         ttk.Label(parent, text=label, style="CardBody.TLabel").grid(row=row, column=0, sticky="w", pady=(8, 2))
         ttk.Entry(parent, textvariable=variable).grid(row=row, column=1, sticky="ew", pady=(8, 2))
 
+    def _update_mode_controls(self, _event=None):
+        hotspot = self.mode_var.get() == "Wi-Fi / hotspot"
+        self.broadcast_entry.configure(state="normal" if hotspot else "disabled")
+        self.topology_browse.configure(state="disabled" if hotspot else "normal")
+
     def _build_monitor_panel(self, parent):
         ttk.Label(parent, text="Network Monitor", style="CardTitle.TLabel").pack(anchor="w")
         ttk.Label(
             parent,
-            text="Live node status updates appear here. Open chat windows are managed automatically after launch.",
+            text="Live node status appears here. In Wi-Fi mode, each device runs one node and discovers peers by UDP broadcast.",
             style="CardBody.TLabel",
             wraplength=640,
             justify="left",
@@ -246,36 +266,59 @@ class MeshChatStudio:
             self.stop_demo()
 
         node_ids = [part.strip() for part in self.ids_var.get().split(",") if part.strip()]
-        if len(node_ids) < 2:
-            messagebox.showerror("Invalid setup", "Enter at least two node IDs, for example A,B,C.")
+        hotspot = self.mode_var.get() == "Wi-Fi / hotspot"
+        if len(node_ids) != len(set(node_ids)):
+            messagebox.showerror("Invalid setup", "Node IDs must be unique.")
+            return
+        if hotspot and len(node_ids) != 1:
+            messagebox.showerror("Invalid setup", "Wi-Fi / hotspot mode runs one node on this device. Enter one node ID.")
+            return
+        if not hotspot and len(node_ids) < 2:
+            messagebox.showerror("Invalid setup", "Enter at least two node IDs for a local demo, for example A,B,C.")
             return
 
         try:
             base_port = int(self.base_port_var.get().strip())
+            if not 1 <= base_port <= 65535 or base_port + len(node_ids) - 1 > 65535:
+                raise ValueError
         except ValueError:
-            messagebox.showerror("Invalid setup", "Base port must be a number.")
+            messagebox.showerror("Invalid setup", "Port must be between 1 and 65535, with room for every local node.")
             return
 
-        topology_path = self.topology_var.get().strip()
-        if topology_path:
-            topology_path = os.path.abspath(topology_path)
-            if not os.path.exists(topology_path):
-                messagebox.showerror("Invalid setup", f"Topology file not found:\n{topology_path}")
+        if hotspot:
+            try:
+                broadcast_addr = str(ipaddress.IPv4Address(self.broadcast_var.get().strip()))
+            except ipaddress.AddressValueError:
+                messagebox.showerror("Invalid setup", "Enter a valid IPv4 broadcast address, for example 192.168.137.255.")
                 return
-        else:
             topology_path = None
+        else:
+            broadcast_addr = "255.255.255.255"
+            topology_path = self.topology_var.get().strip()
+            if topology_path:
+                topology_path = os.path.abspath(topology_path)
+                if not os.path.exists(topology_path):
+                    messagebox.showerror("Invalid setup", f"Topology file not found:\n{topology_path}")
+                    return
+            else:
+                topology_path = None
 
         protocol = self.protocol_var.get().strip()
         ports = {nid: base_port + i for i, nid in enumerate(node_ids)}
         all_ports = list(ports.values())
+        mode = "hotspot" if hotspot else "sim"
 
         self._clear_rows()
         self._workers.clear()
         self._windows.clear()
 
         for index, nid in enumerate(node_ids):
-            worker = WorkerHandle(nid, ports[nid], all_ports, protocol, topology_path)
-            window = WorkerChatGUI(worker, master=self.root, default_dst=next((other for other in node_ids if other != nid), ""))
+            worker = WorkerHandle(
+                nid, ports[nid], all_ports, protocol, topology_path,
+                mode=mode, broadcast_addr=broadcast_addr,
+            )
+            default_dst = next((other for other in node_ids if other != nid), "")
+            window = WorkerChatGUI(worker, master=self.root, default_dst=default_dst)
             self._set_window_icon(window.root)
             window.root.geometry(f"480x420+{80 + (index * 40)}+{80 + (index * 28)}")
             window.root.protocol("WM_DELETE_WINDOW", lambda node_id=nid: self._close_node(node_id))
@@ -284,8 +327,12 @@ class MeshChatStudio:
             self._set_row(nid, ports[nid], "starting")
 
         self._running = True
-        self.status_var.set(f"Running {len(node_ids)} nodes with {protocol}.")
-        self._append_log(f"Launched demo: nodes={','.join(node_ids)} protocol={protocol}")
+        if hotspot:
+            self.status_var.set(f"Listening on Wi-Fi port {base_port}; use a unique node ID on each device.")
+            self._append_log(f"Connected to Wi-Fi mode: node={node_ids[0]} port={base_port} broadcast={broadcast_addr} protocol={protocol}")
+        else:
+            self.status_var.set(f"Running {len(node_ids)} local nodes with {protocol}.")
+            self._append_log(f"Launched local demo: nodes={','.join(node_ids)} protocol={protocol}")
 
     def _close_node(self, node_id):
         worker = self._workers.pop(node_id, None)
@@ -336,10 +383,12 @@ class MeshChatStudio:
                 self._close_node(node_id)
                 continue
             window.poll_events()
-            status = "running"
+            status = "error" if worker.error else ("running" if worker.pubkey else "starting")
             pubkey = worker.pubkey[:16] + "..." if worker.pubkey else ""
             port = self.tree.set(self._rows[node_id], "port") if node_id in self._rows else ""
             self._set_row(node_id, port, status, pubkey)
+            if worker.error:
+                self.status_var.set(f"Node {node_id} failed: {worker.error}")
             if worker.pubkey and not getattr(worker, "_pubkey_logged", False):
                 worker._pubkey_logged = True
                 self._append_log(f"Node {node_id} ready: pubkey advertised.")
