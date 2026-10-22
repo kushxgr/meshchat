@@ -108,8 +108,10 @@ class WorkerChatGUI:
     """Same look-and-feel as gui.ChatGUI, but backed by a WorkerHandle
     (subprocess) instead of an in-process Node."""
 
-    def __init__(self, worker: WorkerHandle, master, default_dst=None):
+    def __init__(self, worker: WorkerHandle, master, default_dst=None,
+                 on_send=None):
         self.worker = worker
+        self.on_send = on_send
         self.root = tk.Toplevel(master)
         self.root.title(f"Mesh Chat — {worker.node_id}")
 
@@ -169,6 +171,8 @@ class WorkerChatGUI:
                         f"[no receipt from {obj['dst']} before message TTL expired]"
                     )
                 else:
+                    if self.on_send:
+                        self.on_send(self.worker.node_id, obj["dst"], obj["text"])
                     self._pending_deliveries[msg_id] = (
                         obj["dst"],
                         obj["text"],

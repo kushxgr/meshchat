@@ -14,6 +14,7 @@ import os
 import re
 import socket
 import sys
+import time
 
 if "--worker" in sys.argv:
     sys.argv.remove("--worker")
@@ -41,6 +42,7 @@ class MeshChatStudio:
         self._workers = {}
         self._windows = {}
         self._rows = {}
+        self._recent_sent = []
         self._running = False
 
         self._apply_theme()
@@ -223,11 +225,47 @@ class MeshChatStudio:
         scrollbar.pack(side="right", fill="y")
         self.tree.configure(yscrollcommand=scrollbar.set)
 
+        ttk.Label(
+            parent, text="Last 5 Sent Messages", style="CardTitle.TLabel",
+        ).pack(anchor="w", pady=(14, 6))
+        recent_frame = ttk.Frame(parent, style="Card.TFrame")
+        recent_frame.pack(fill="x")
+        recent_columns = ("time", "route", "message")
+        self.recent_tree = ttk.Treeview(
+            recent_frame, columns=recent_columns, show="headings", height=5,
+        )
+        self.recent_tree.heading("time", text="Time")
+        self.recent_tree.heading("route", text="From -> To")
+        self.recent_tree.heading("message", text="Message")
+        self.recent_tree.column("time", width=85, anchor="center", stretch=False)
+        self.recent_tree.column("route", width=120, anchor="center", stretch=False)
+        self.recent_tree.column("message", width=360, anchor="w")
+        self.recent_tree.pack(fill="x", side="left", expand=True)
+        recent_scrollbar = ttk.Scrollbar(
+            recent_frame, orient="vertical", command=self.recent_tree.yview,
+        )
+        recent_scrollbar.pack(side="right", fill="y")
+        self.recent_tree.configure(yscrollcommand=recent_scrollbar.set)
+
         log_label = ttk.Label(parent, text="Launcher Log", style="CardTitle.TLabel")
-        log_label.pack(anchor="w", pady=(16, 6))
-        self.log = tk.Text(parent, height=10, wrap="word", bg=self.card, fg=self.text, insertbackground=self.text, relief="flat", highlightthickness=0)
+        log_label.pack(anchor="w", pady=(12, 6))
+        self.log = tk.Text(parent, height=7, wrap="word", bg=self.card, fg=self.text, insertbackground=self.text, relief="flat", highlightthickness=0)
         self.log.pack(fill="x")
         self.log.configure(state="disabled")
+
+    def _record_sent_message(self, sender, recipient, text):
+        self._recent_sent.insert(
+            0, (time.strftime("%H:%M:%S"), sender, recipient, text),
+        )
+        del self._recent_sent[5:]
+
+        for row in self.recent_tree.get_children():
+            self.recent_tree.delete(row)
+        for sent_time, from_node, to_node, message in self._recent_sent:
+            self.recent_tree.insert(
+                "", "end",
+                values=(sent_time, f"{from_node} -> {to_node}", message),
+            )
 
     def _browse_topology(self):
         path = filedialog.askopenfilename(
@@ -325,7 +363,12 @@ class MeshChatStudio:
                 mode=mode, broadcast_addr=broadcast_addr,
             )
             default_dst = next((other for other in node_ids if other != nid), "")
-            window = WorkerChatGUI(worker, master=self.root, default_dst=default_dst)
+            window = WorkerChatGUI(
+                worker,
+                master=self.root,
+                default_dst=default_dst,
+                on_send=self._record_sent_message,
+            )
             self._set_window_icon(window.root)
             window.root.geometry(f"480x420+{80 + (index * 40)}+{80 + (index * 28)}")
             window.root.protocol("WM_DELETE_WINDOW", lambda node_id=nid: self._close_node(node_id))
